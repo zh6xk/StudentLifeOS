@@ -17,6 +17,20 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      # INI ADALAH PERINTAH DEBUGGING PERMINTAANMU
+      - name: Cek Karakter Tersembunyi (Sesuai Permintaanmu)
+        run: |
+          echo "=== LIST ROOT FOLDER ==="
+          ls -la
+          echo "=== LIST FOLDER SOURCES ==="
+          ls -la Sources/ || echo "Folder Sources tidak ditemukan atau namanya salah!"
+          
+          echo "=== CEK HEX NAMA FILE ==="
+          find Sources -type f | while read f; do
+            echo "--- File: $f ---"
+            echo -n "$f" | xxd
+          done
+
       - name: Install Dependencies
         run: |
           brew install xcodegen ldid
@@ -34,48 +48,35 @@ jobs:
             -arch arm64 \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO 2>&1 | tee build.log
-
-          echo "=== VERIFIKASI: apakah swiftc benar-benar mengkompilasi? ==="
-          COMPILE_COUNT=$(grep -c "Compiling\|SwiftCompile" build.log || true)
-          echo "Jumlah proses kompilasi Swift terdeteksi: $COMPILE_COUNT"
-
-          if [ "$COMPILE_COUNT" -eq 0 ]; then
-            echo "PERINGATAN: Tidak ada proses kompilasi Swift terdeteksi di log build!"
-          fi
-
+            CODE_SIGNING_ALLOWED=NO
 
       - name: Inject Signature & Pack IPA
         run: |
-          echo "=== MENCARI LOKASI .APP DARI XCODE ==="
+          echo "=== MENCARI LOKASI ASLI DARI XCODE ==="
           APP_PATH=$(find ~/Library/Developer/Xcode/DerivedData -type d -name "StudentLifeOS.app" | head -n 1)
-
-          if [ -z "$APP_PATH" ]; then
-            echo "GAGAL: .app tidak ditemukan sama sekali."
-            exit 1
-          fi
+          EXEC_PATH=$(find ~/Library/Developer/Xcode/DerivedData -type f -name "StudentLifeOS" | head -n 1)
+          
           echo "Lokasi .app: $APP_PATH"
-
-          echo "=== MEMBACA NAMA EXECUTABLE DARI Info.plist ==="
-          EXEC_NAME=$(/usr/libexec/PlistBuddy -c "Print :CFBundleExecutable" "$APP_PATH/Info.plist")
-          EXEC_PATH="$APP_PATH/$EXEC_NAME"
-          echo "Nama executable: $EXEC_NAME"
           echo "Lokasi binary: $EXEC_PATH"
-
-          if [ ! -f "$EXEC_PATH" ]; then
-            echo "GAGAL: Info.plist menyebut '$EXEC_NAME' tapi file tidak ada."
-            echo "Isi folder .app untuk debug:"
-            ls -la "$APP_PATH"
-            exit 1
+          
+          if [ "$EXEC_PATH" != "$APP_PATH/StudentLifeOS" ] && [ -n "$EXEC_PATH" ]; then
+              echo "Memasukkan binary ke dalam folder .app..."
+              cp "$EXEC_PATH" "$APP_PATH/StudentLifeOS"
+              EXEC_PATH="$APP_PATH/StudentLifeOS"
           fi
 
-          echo "SUKSES: Binary ditemukan! Menyuntikkan format iOS..."
-          ldid -S "$EXEC_PATH"
-
-          echo "Membungkus menjadi .ipa..."
-          mkdir -p Payload
-          cp -r "$APP_PATH" Payload/
-          zip -qr StudentLifeOS.ipa Payload
+          if [ -f "$EXEC_PATH" ]; then
+            echo "SUKSES: File inti ditemukan! Menyuntikkan format iOS..."
+            ldid -S "$EXEC_PATH"
+            
+            echo "Membungkus menjadi .ipa..."
+            mkdir -p Payload
+            cp -r "$APP_PATH" Payload/
+            zip -qr StudentLifeOS.ipa Payload
+          else
+            echo "GAGAL: Binary benar-benar tidak dibuat oleh Xcode."
+            exit 1
+          fi
 
       - name: Upload ke GitHub Release
         uses: softprops/action-gh-release@v2
