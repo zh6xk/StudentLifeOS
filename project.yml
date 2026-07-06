@@ -21,6 +21,11 @@ targets:
   StudentLifeOSWidget:
     type: app-extension
     platform: iOS
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.studentlife.StudentLifeOS.StudentLifeOSWidget
+        CURRENT_PROJECT_VERSION: "1"
+        MARKETING_VERSION: "1.0"
     sources:
       - path: Sources/Widget.swift
     info:
