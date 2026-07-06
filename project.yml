@@ -17,6 +17,11 @@ targets:
         CURRENT_PROJECT_VERSION: "1"
         MARKETING_VERSION: "1.0"
         PRODUCT_BUNDLE_IDENTIFIER: com.studentlife.StudentLifeOS
+    entitlements:
+      path: Sources/StudentLifeOS.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.studentlife.shared
     dependencies:
       - target: StudentLifeOSWidget
         embed: true
@@ -37,6 +42,11 @@ targets:
       properties:
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    entitlements:
+      path: Sources/Widget.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.studentlife.shared
     dependencies:
       - sdk: WidgetKit.framework
       - sdk: SwiftUI.framework

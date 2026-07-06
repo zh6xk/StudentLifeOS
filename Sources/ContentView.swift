@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import WidgetKit
 
 struct ContentView: View {
     var body: some View {
@@ -28,6 +29,7 @@ struct TaskView: View {
                 ToolbarItem(placement: .primaryAction) {
                     Button("Tambah") {
                         modelContext.insert(TaskItem(title: "Tugas Baru", taskType: "Kampus"))
+                        WidgetCenter.shared.reloadAllTimelines()
                     }
                 }
             }
@@ -35,6 +37,7 @@ struct TaskView: View {
     }
     private func deleteTasks(offsets: IndexSet) {
         for index in offsets { modelContext.delete(tasks[index]) }
+        WidgetCenter.shared.reloadAllTimelines()
     }
 }
 

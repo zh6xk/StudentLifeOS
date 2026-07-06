@@ -1,5 +1,6 @@
 import WidgetKit
 import SwiftUI
+import SwiftData
 
 struct Provider: TimelineProvider {
     func placeholder(in context: Context) -> SimpleEntry {
@@ -12,9 +13,35 @@ struct Provider: TimelineProvider {
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<Entry>) -> ()) {
-        let entry = SimpleEntry(date: Date(), title: "Tugas Terdekat", description: "Fokus belajar iOS hari ini!")
-        let timeline = Timeline(entries: [entry], policy: .atEnd)
-        completion(timeline)
+        guard let groupURL = FileManager.default.containerURL(
+            forSecurityApplicationGroupIdentifier: "group.com.studentlife.shared"
+        ) else {
+            completion(Timeline(entries: [SimpleEntry(date: Date(), title: "Error", description: "App Group tidak ditemukan")], policy: .atEnd))
+            return
+        }
+        let storeURL = groupURL.appendingPathComponent("StudentLifeOS.sqlite")
+        let config = ModelConfiguration(schema: Schema([TaskItem.self]), url: storeURL)
+
+        do {
+            let container = try ModelContainer(for: TaskItem.self, configurations: config)
+            let fetchContext = ModelContext(container)
+            var descriptor = FetchDescriptor<TaskItem>(
+                predicate: #Predicate { $0.isCompleted == false },
+                sortBy: [SortDescriptor(\.dueDate)]
+            )
+            descriptor.fetchLimit = 1
+            let nearestTask = try fetchContext.fetch(descriptor).first
+
+            let entry: SimpleEntry
+            if let task = nearestTask {
+                entry = SimpleEntry(date: Date(), title: task.title, description: "Deadline: \(task.dueDate.formatted(date: .abbreviated, time: .shortened))")
+            } else {
+                entry = SimpleEntry(date: Date(), title: "Tidak ada tugas", description: "Semua tugas sudah selesai!")
+            }
+            completion(Timeline(entries: [entry], policy: .after(Date().addingTimeInterval(900))))
+        } catch {
+            completion(Timeline(entries: [SimpleEntry(date: Date(), title: "Error", description: "\(error.localizedDescription)")], policy: .atEnd))
+        }
     }
 }
 
