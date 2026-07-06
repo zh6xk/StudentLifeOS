@@ -1,9 +1,13 @@
-name: iOS Build Test
+name: iOS Build & Generate IPA
 
 on:
   push:
     branches: [ "main" ]
   workflow_dispatch:
+
+# Izin wajib agar GitHub Actions boleh membuat halaman Release
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -13,16 +17,35 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+
       - name: Install Xcodegen
         run: brew install xcodegen
+
       - name: Generate Xcode Project
         run: xcodegen generate
-      - name: Build Project (Simulator)
+
+      - name: Build Project (Unsigned Device Build)
         run: |
           xcodebuild clean build \
             -project "StudentLifeOS.xcodeproj" \
             -scheme "StudentLifeOS" \
-            -destination "platform=iOS Simulator,name=iPhone 17" \
+            -configuration Release \
+            -sdk iphoneos \
+            CONFIGURATION_BUILD_DIR="${PWD}/build" \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
-            ONLY_ACTIVE_ARCH=NO
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Membungkus menjadi .ipa
+        run: |
+          mkdir -p Payload
+          mv build/StudentLifeOS.app Payload/
+          zip -r StudentLifeOS.ipa Payload
+
+      # Langkah baru: Mengirim file IPA ke halaman Release
+      - name: Upload ke GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: "StudentLifeOS Build #${{ github.run_number }}"
+          files: StudentLifeOS.ipa
