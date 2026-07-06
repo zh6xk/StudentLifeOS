@@ -74,6 +74,23 @@ jobs:
             echo "SUKSES: File inti ditemukan! Menyuntikkan format iOS..."
             ldid -S "$EXEC_PATH"
             
+            BUILD_DIR=$(dirname "$APP_PATH")
+            if [ -d "$BUILD_DIR/StudentLifeOSWidget.appex" ] && ! [ -d "$APP_PATH/PlugIns/StudentLifeOSWidget.appex" ]; then
+              echo "Memasukkan Widget secara manual ke dalam aplikasi (karena Xcode melewatinya)..."
+              mkdir -p "$APP_PATH/PlugIns"
+              cp -r "$BUILD_DIR/StudentLifeOSWidget.appex" "$APP_PATH/PlugIns/"
+            fi
+            
+            echo "Mencari dan menyuntikkan format iOS ke ekstensi Widget (jika ada)..."
+            find "$APP_PATH/PlugIns" -name "*.appex" -type d 2>/dev/null | while read appex_dir; do
+              appex_name=$(basename "$appex_dir" .appex)
+              appex_exec="$appex_dir/$appex_name"
+              if [ -f "$appex_exec" ]; then
+                echo "Menandatangani ekstensi: $appex_name"
+                ldid -S "$appex_exec"
+              fi
+            done
+            
             echo "Membungkus menjadi .ipa..."
             mkdir -p Payload
             cp -r "$APP_PATH" Payload/
