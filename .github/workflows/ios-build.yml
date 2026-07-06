@@ -25,25 +25,27 @@ jobs:
       - name: Generate Xcode Project
         run: xcodegen generate
 
-      # Merakit aplikasi secara utuh ke dalam format Archive khusus iPhone (arm64)
-      - name: Build Project (Archive)
+      # Menggunakan "build" biasa agar Xcode tidak menghapus aplikasinya
+      - name: Build Project (Raw Build)
         run: |
-          xcodebuild archive \
+          xcodebuild clean build \
             -project "StudentLifeOS.xcodeproj" \
             -scheme "StudentLifeOS" \
             -configuration Release \
             -sdk iphoneos \
             -arch arm64 \
-            -archivePath build/StudentLifeOS.xcarchive \
+            CONFIGURATION_BUILD_DIR="${PWD}/build" \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO
 
-      # Mengekstrak, menyuntikkan ruang tanda tangan iOS (ldid) langsung ke inti file, lalu dibungkus
+      # Radar pencari otomatis + Suntikan ldid
       - name: Inject Signature & Pack IPA
         run: |
-          # Mencari lokasi pasti aplikasinya di dalam Archive
-          APP_PATH="build/StudentLifeOS.xcarchive/Products/Applications/StudentLifeOS.app"
+          echo "Mencari lokasi folder .app..."
+          APP_PATH=$(find build -type d -name "StudentLifeOS.app" | head -n 1)
+          echo "Ditemukan di: $APP_PATH"
+          
           EXEC_PATH="$APP_PATH/StudentLifeOS"
           
           echo "Menyuntikkan ruang tanda tangan iOS (ldid)..."
