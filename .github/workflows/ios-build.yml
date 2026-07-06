@@ -24,7 +24,6 @@ jobs:
       - name: Generate Xcode Project
         run: xcodegen generate
 
-      # Membiarkan Xcode merakit secara natural di brankas DerivedData miliknya
       - name: Build Project (Natural Compile)
         run: |
           xcodebuild clean build \
@@ -37,33 +36,41 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO
 
-      # Detektif pencari file, penyuntik ldid, dan pembungkus IPA
       - name: Inject Signature & Pack IPA
         run: |
           echo "=== MENCARI LOKASI .APP DARI XCODE ==="
           APP_PATH=$(find ~/Library/Developer/Xcode/DerivedData -type d -name "StudentLifeOS.app" | head -n 1)
 
           if [ -z "$APP_PATH" ]; then
-            echo "GAGAL: .app tidak ditemukan sama sekali. Build kemungkinan gagal diam-diam."
+            echo "GAGAL: .app tidak ditemukan sama sekali."
             exit 1
           fi
-
           echo "Lokasi .app: $APP_PATH"
 
           echo "=== MEMBACA NAMA EXECUTABLE DARI Info.plist ==="
           EXEC_NAME=$(/usr/libexec/PlistBuddy -c "Print :CFBundleExecutable" "$APP_PATH/Info.plist")
           EXEC_PATH="$APP_PATH/$EXEC_NAME"
-
           echo "Nama executable: $EXEC_NAME"
           echo "Lokasi binary: $EXEC_PATH"
 
-          if [ -f "$EXEC_PATH" ]; then
-            echo "SUKSES: Binary ditemukan! Menyuntikkan format iOS..."
-            ldid -S "$EXEC_PATH"
-
-            echo "Membungkus menjadi .ipa..."
-            mkdir -p Payload
-            cp -r "$APP_PATH" Payload/
-            zip -qr StudentLifeOS.ipa Payload
-          else
+          if [ ! -f "$EXEC_PATH" ]; then
             echo "GAGAL: Info.plist menyebut '$EXEC_NAME' tapi file tidak ada."
+            echo "Isi folder .app untuk debug:"
+            ls -la "$APP_PATH"
+            exit 1
+          fi
+
+          echo "SUKSES: Binary ditemukan! Menyuntikkan format iOS..."
+          ldid -S "$EXEC_PATH"
+
+          echo "Membungkus menjadi .ipa..."
+          mkdir -p Payload
+          cp -r "$APP_PATH" Payload/
+          zip -qr StudentLifeOS.ipa Payload
+
+      - name: Upload ke GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: "StudentLifeOS Build #${{ github.run_number }}"
+          files: StudentLifeOS.ipa
