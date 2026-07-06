@@ -19,14 +19,13 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          brew install xcodegen
-          brew install ldid
+          brew install xcodegen ldid
 
       - name: Generate Xcode Project
         run: xcodegen generate
 
-      # Menggunakan "build" biasa agar Xcode tidak menghapus aplikasinya
-      - name: Build Project (Raw Build)
+      # Memaksa Xcode merakit file inti dengan menghapus CODE_SIGNING_ALLOWED=NO
+      - name: Build Project (Force Compile)
         run: |
           xcodebuild clean build \
             -project "StudentLifeOS.xcodeproj" \
@@ -37,24 +36,26 @@ jobs:
             CONFIGURATION_BUILD_DIR="${PWD}/build" \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO
+            PROVISIONING_PROFILE_SPECIFIER=""
 
-      # Radar pencari otomatis + Suntikan ldid
+      # Memeriksa file, menyuntikkan ldid, dan membungkus
       - name: Inject Signature & Pack IPA
         run: |
-          echo "Mencari lokasi folder .app..."
           APP_PATH=$(find build -type d -name "StudentLifeOS.app" | head -n 1)
-          echo "Ditemukan di: $APP_PATH"
-          
           EXEC_PATH="$APP_PATH/StudentLifeOS"
           
-          echo "Menyuntikkan ruang tanda tangan iOS (ldid)..."
-          ldid -S "$EXEC_PATH"
-          
-          echo "Membungkus menjadi .ipa..."
-          mkdir -p Payload
-          cp -r "$APP_PATH" Payload/
-          zip -qr StudentLifeOS.ipa Payload
+          if [ -f "$EXEC_PATH" ]; then
+            echo "SUKSES: File inti aplikasi ditemukan! Menyuntikkan format iOS..."
+            ldid -S "$EXEC_PATH"
+            
+            echo "Membungkus menjadi .ipa..."
+            mkdir -p Payload
+            cp -r "$APP_PATH" Payload/
+            zip -qr StudentLifeOS.ipa Payload
+          else
+            echo "GAGAL: Xcode masih bandel dan menghilangkan filenya!"
+            exit 1
+          fi
 
       - name: Upload ke GitHub Release
         uses: softprops/action-gh-release@v2
