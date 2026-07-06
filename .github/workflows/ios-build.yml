@@ -18,13 +18,17 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Install Xcodegen
-        run: brew install xcodegen
+      # Menginstal Xcodegen dan alat penyuntik tanda tangan (ldid)
+      - name: Install Dependencies
+        run: |
+          brew install xcodegen
+          brew install ldid
 
       - name: Generate Xcode Project
         run: xcodegen generate
 
-      - name: Build Project (Ad-Hoc Device Build)
+      # Membiarkan Xcode membuat aplikasi polos (tanpa memicu error keamanan)
+      - name: Build Project (Raw Device Build)
         run: |
           xcodebuild clean build \
             -project "StudentLifeOS.xcodeproj" \
@@ -32,10 +36,14 @@ jobs:
             -configuration Release \
             -sdk iphoneos \
             CONFIGURATION_BUILD_DIR="${PWD}/build" \
-            CODE_SIGN_IDENTITY="-" \
-            CODE_SIGNING_REQUIRED=NO
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
 
-
+      # Menyuntikkan ruang tanda tangan palsu agar bisa dibaca oleh ESign
+      - name: Inject Fake Signature (Untuk ESign)
+        run: |
+          ldid -S build/StudentLifeOS.app
 
       - name: Membungkus menjadi .ipa
         run: |
@@ -43,7 +51,6 @@ jobs:
           mv build/StudentLifeOS.app Payload/
           zip -r StudentLifeOS.ipa Payload
 
-      # Langkah baru: Mengirim file IPA ke halaman Release
       - name: Upload ke GitHub Release
         uses: softprops/action-gh-release@v2
         with:
