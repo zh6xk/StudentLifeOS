@@ -6,7 +6,9 @@ targets:
     type: application
     platform: iOS
     deploymentTarget: "17.0"
-    sources: [Sources]
+    sources:
+      - path: Sources
+        buildPhase: sources
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
