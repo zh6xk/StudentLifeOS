@@ -5,7 +5,6 @@ on:
     branches: [ "main" ]
   workflow_dispatch:
 
-# Izin wajib agar GitHub Actions boleh membuat halaman Release
 permissions:
   contents: write
 
@@ -18,36 +17,42 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Install Xcodegen
-        run: brew install xcodegen
+      - name: Install Dependencies
+        run: |
+          brew install xcodegen
+          brew install ldid
 
       - name: Generate Xcode Project
         run: xcodegen generate
 
-      - name: Build Project (Raw Build)
+      # Merakit aplikasi secara utuh ke dalam format Archive khusus iPhone (arm64)
+      - name: Build Project (Archive)
         run: |
-          xcodebuild clean build \
+          xcodebuild archive \
             -project "StudentLifeOS.xcodeproj" \
             -scheme "StudentLifeOS" \
             -configuration Release \
             -sdk iphoneos \
-            SYMROOT="${PWD}/build" \
+            -arch arm64 \
+            -archivePath build/StudentLifeOS.xcarchive \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO
 
-      - name: Inject Fake Signature & Pack IPA
+      # Mengekstrak, menyuntikkan ruang tanda tangan iOS (ldid) langsung ke inti file, lalu dibungkus
+      - name: Inject Signature & Pack IPA
         run: |
-          # 1. Cari lokasi asli folder .app secara otomatis
-          APP_PATH=$(find build -type d -name "StudentLifeOS.app" | head -n 1)
+          # Mencari lokasi pasti aplikasinya di dalam Archive
+          APP_PATH="build/StudentLifeOS.xcarchive/Products/Applications/StudentLifeOS.app"
+          EXEC_PATH="$APP_PATH/StudentLifeOS"
           
-          # 2. Suntikkan Tanda Tangan Palsu pakai tool bawaan Mac (codesign)
-          codesign -s - -f --deep "$APP_PATH"
+          echo "Menyuntikkan ruang tanda tangan iOS (ldid)..."
+          ldid -S "$EXEC_PATH"
           
-          # 3. Bungkus menjadi file .ipa
+          echo "Membungkus menjadi .ipa..."
           mkdir -p Payload
           cp -r "$APP_PATH" Payload/
-          zip -r StudentLifeOS.ipa Payload
+          zip -qr StudentLifeOS.ipa Payload
 
       - name: Upload ke GitHub Release
         uses: softprops/action-gh-release@v2
