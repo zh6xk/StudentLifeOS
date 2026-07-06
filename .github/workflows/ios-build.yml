@@ -18,37 +18,35 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # Menginstal Xcodegen dan alat penyuntik tanda tangan (ldid)
-      - name: Install Dependencies
-        run: |
-          brew install xcodegen
-          brew install ldid
+      - name: Install Xcodegen
+        run: brew install xcodegen
 
       - name: Generate Xcode Project
         run: xcodegen generate
 
-      # Membiarkan Xcode membuat aplikasi polos (tanpa memicu error keamanan)
-      - name: Build Project (Raw Device Build)
+      - name: Build Project (Raw Build)
         run: |
           xcodebuild clean build \
             -project "StudentLifeOS.xcodeproj" \
             -scheme "StudentLifeOS" \
             -configuration Release \
             -sdk iphoneos \
-            CONFIGURATION_BUILD_DIR="${PWD}/build" \
+            SYMROOT="${PWD}/build" \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO
 
-      # Menyuntikkan ruang tanda tangan palsu agar bisa dibaca oleh ESign
-      - name: Inject Fake Signature (Untuk ESign)
+      - name: Inject Fake Signature & Pack IPA
         run: |
-          ldid -S build/StudentLifeOS.app
-
-      - name: Membungkus menjadi .ipa
-        run: |
+          # 1. Cari lokasi asli folder .app secara otomatis
+          APP_PATH=$(find build -type d -name "StudentLifeOS.app" | head -n 1)
+          
+          # 2. Suntikkan Tanda Tangan Palsu pakai tool bawaan Mac (codesign)
+          codesign -s - -f --deep "$APP_PATH"
+          
+          # 3. Bungkus menjadi file .ipa
           mkdir -p Payload
-          mv build/StudentLifeOS.app Payload/
+          cp -r "$APP_PATH" Payload/
           zip -r StudentLifeOS.ipa Payload
 
       - name: Upload ke GitHub Release
