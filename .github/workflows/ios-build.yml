@@ -17,28 +17,31 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # INI ADALAH PERINTAH DEBUGGING PERMINTAANMU
-      - name: Cek Karakter Tersembunyi (Sesuai Permintaanmu)
-        run: |
-          echo "=== LIST ROOT FOLDER ==="
-          ls -la
-          echo "=== LIST FOLDER SOURCES ==="
-          ls -la Sources/ || echo "Folder Sources tidak ditemukan atau namanya salah!"
-          
-          echo "=== CEK HEX NAMA FILE ==="
-          find Sources -type f | while read f; do
-            echo "--- File: $f ---"
-            echo -n "$f" | xxd
-          done
-
       - name: Install Dependencies
         run: |
           brew install xcodegen ldid
 
+      # MESIN PEMBERSIH OTOMATIS: Menghapus karakter aneh/tersembunyi di nama file
+      - name: Sanitize Swift Files (Auto-Fix)
+        run: |
+          if [ -d "Sources" ]; then
+            echo "Memeriksa dan membersihkan nama file di folder Sources..."
+            find Sources -type f -name "*.swift*" | while read -r file; do
+              dir=$(dirname "$file")
+              base=$(basename "$file")
+              # Hanya menyisakan huruf, angka, titik, strip, dan underscore
+              clean_base=$(echo "$base" | tr -cd '[:alnum:]._-')
+              if [ "$base" != "$clean_base" ]; then
+                echo "Memperbaiki nama: '$base' menjadi '$clean_base'"
+                mv "$file" "$dir/$clean_base"
+              fi
+            done
+          fi
+
       - name: Generate Xcode Project
         run: xcodegen generate
 
-      - name: Build Project (Natural Compile)
+      - name: Build Project (Raw Compile)
         run: |
           xcodebuild clean build \
             -project "StudentLifeOS.xcodeproj" \
@@ -52,18 +55,20 @@ jobs:
 
       - name: Inject Signature & Pack IPA
         run: |
-          echo "=== MENCARI LOKASI ASLI DARI XCODE ==="
+          echo "Mencari lokasi .app..."
           APP_PATH=$(find ~/Library/Developer/Xcode/DerivedData -type d -name "StudentLifeOS.app" | head -n 1)
-          EXEC_PATH=$(find ~/Library/Developer/Xcode/DerivedData -type f -name "StudentLifeOS" | head -n 1)
+          
+          if [ -z "$APP_PATH" ]; then
+            echo "GAGAL: Xcode tidak membuat folder aplikasi sama sekali."
+            exit 1
+          fi
+          
+          # Binary name pasti sama dengan nama folder .app tanpa ekstensi
+          APP_NAME=$(basename "$APP_PATH" .app)
+          EXEC_PATH="$APP_PATH/$APP_NAME"
           
           echo "Lokasi .app: $APP_PATH"
           echo "Lokasi binary: $EXEC_PATH"
-          
-          if [ "$EXEC_PATH" != "$APP_PATH/StudentLifeOS" ] && [ -n "$EXEC_PATH" ]; then
-              echo "Memasukkan binary ke dalam folder .app..."
-              cp "$EXEC_PATH" "$APP_PATH/StudentLifeOS"
-              EXEC_PATH="$APP_PATH/StudentLifeOS"
-          fi
 
           if [ -f "$EXEC_PATH" ]; then
             echo "SUKSES: File inti ditemukan! Menyuntikkan format iOS..."
@@ -74,7 +79,7 @@ jobs:
             cp -r "$APP_PATH" Payload/
             zip -qr StudentLifeOS.ipa Payload
           else
-            echo "GAGAL: Binary benar-benar tidak dibuat oleh Xcode."
+            echo "GAGAL: Xcode hanya membuat folder kosong karena file kode sumber tidak terhubung dengan benar."
             exit 1
           fi
 
