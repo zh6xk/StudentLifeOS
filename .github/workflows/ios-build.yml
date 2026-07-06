@@ -55,50 +55,52 @@ jobs:
 
       - name: Inject Signature & Pack IPA
         run: |
-          echo "Mencari lokasi .app..."
+          echo "=== MENCARI LOKASI .APP DARI XCODE ==="
           APP_PATH=$(find ~/Library/Developer/Xcode/DerivedData -type d -name "StudentLifeOS.app" | head -n 1)
-          
+
           if [ -z "$APP_PATH" ]; then
-            echo "GAGAL: Xcode tidak membuat folder aplikasi sama sekali."
+            echo "GAGAL: .app tidak ditemukan sama sekali."
             exit 1
           fi
-          
-          # Binary name pasti sama dengan nama folder .app tanpa ekstensi
-          APP_NAME=$(basename "$APP_PATH" .app)
-          EXEC_PATH="$APP_PATH/$APP_NAME"
-          
           echo "Lokasi .app: $APP_PATH"
+
+          echo "=== MEMBACA NAMA EXECUTABLE DARI Info.plist ==="
+          EXEC_NAME=$(/usr/libexec/PlistBuddy -c "Print :CFBundleExecutable" "$APP_PATH/Info.plist")
+          EXEC_PATH="$APP_PATH/$EXEC_NAME"
+          echo "Nama executable: $EXEC_NAME"
           echo "Lokasi binary: $EXEC_PATH"
 
-          if [ -f "$EXEC_PATH" ]; then
-            echo "SUKSES: File inti ditemukan! Menyuntikkan format iOS..."
-            ldid -S "$EXEC_PATH"
-            
-            BUILD_DIR=$(dirname "$APP_PATH")
-            if [ -d "$BUILD_DIR/StudentLifeOSWidget.appex" ] && ! [ -d "$APP_PATH/PlugIns/StudentLifeOSWidget.appex" ]; then
-              echo "Memasukkan Widget secara manual ke dalam aplikasi (karena Xcode melewatinya)..."
-              mkdir -p "$APP_PATH/PlugIns"
-              cp -r "$BUILD_DIR/StudentLifeOSWidget.appex" "$APP_PATH/PlugIns/"
-            fi
-            
-            echo "Mencari dan menyuntikkan format iOS ke ekstensi Widget (jika ada)..."
-            find "$APP_PATH/PlugIns" -name "*.appex" -type d 2>/dev/null | while read appex_dir; do
-              appex_name=$(basename "$appex_dir" .appex)
-              appex_exec="$appex_dir/$appex_name"
-              if [ -f "$appex_exec" ]; then
-                echo "Menandatangani ekstensi: $appex_name"
-                ldid -S "$appex_exec"
-              fi
-            done
-            
-            echo "Membungkus menjadi .ipa..."
-            mkdir -p Payload
-            cp -r "$APP_PATH" Payload/
-            zip -qr StudentLifeOS.ipa Payload
-          else
-            echo "GAGAL: Xcode hanya membuat folder kosong karena file kode sumber tidak terhubung dengan benar."
+          if [ ! -f "$EXEC_PATH" ]; then
+            echo "GAGAL: Info.plist menyebut '$EXEC_NAME' tapi file tidak ada."
+            ls -la "$APP_PATH"
             exit 1
           fi
+
+          echo "=== MENYUNTIK SIGNATURE KE SEMUA BINARY (termasuk widget extension) ==="
+          # Sign dulu binary di dalam setiap .appex (widget extension), baru main binary
+          if [ -d "$APP_PATH/PlugIns" ]; then
+            find "$APP_PATH/PlugIns" -name "*.appex" | while read APPEX; do
+              APPEX_NAME=$(basename "$APPEX" .appex)
+              APPEX_EXEC="$APPEX/$APPEX_NAME"
+              if [ -f "$APPEX_EXEC" ]; then
+                echo "Signing extension: $APPEX_EXEC"
+                ldid -S "$APPEX_EXEC"
+              else
+                echo "PERINGATAN: binary extension tidak ditemukan di $APPEX"
+                ls -la "$APPEX"
+              fi
+            done
+          else
+            echo "PERINGATAN: Tidak ada folder PlugIns di dalam .app -- widget tidak ter-embed!"
+          fi
+
+          echo "Signing main binary: $EXEC_PATH"
+          ldid -S "$EXEC_PATH"
+
+          echo "Membungkus menjadi .ipa..."
+          mkdir -p Payload
+          cp -r "$APP_PATH" Payload/
+          zip -qr StudentLifeOS.ipa Payload
 
       - name: Upload ke GitHub Release
         uses: softprops/action-gh-release@v2

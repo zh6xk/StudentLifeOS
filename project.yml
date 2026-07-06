@@ -19,10 +19,12 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.studentlife.StudentLifeOS
     dependencies:
       - target: StudentLifeOSWidget
+        embed: true
 
   StudentLifeOSWidget:
     type: app-extension
     platform: iOS
+    deploymentTarget: "17.0"
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.studentlife.StudentLifeOS.StudentLifeOSWidget
@@ -35,3 +37,6 @@ targets:
       properties:
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    dependencies:
+      - sdk: WidgetKit.framework
+      - sdk: SwiftUI.framework
