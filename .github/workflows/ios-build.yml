@@ -24,7 +24,7 @@ jobs:
       - name: Generate Xcode Project
         run: xcodegen generate
 
-      - name: Build Project (Unsigned Device Build)
+      - name: Build Project (Ad-Hoc Device Build)
         run: |
           xcodebuild clean build \
             -project "StudentLifeOS.xcodeproj" \
@@ -32,9 +32,10 @@ jobs:
             -configuration Release \
             -sdk iphoneos \
             CONFIGURATION_BUILD_DIR="${PWD}/build" \
-            CODE_SIGN_IDENTITY="" \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGNING_REQUIRED=NO
+
+
 
       - name: Membungkus menjadi .ipa
         run: |
