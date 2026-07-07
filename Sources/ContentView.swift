@@ -15,15 +15,7 @@ struct Theme {
 
 struct ContentView: View {
     var body: some View {
-        TabView {
-            DashboardView()
-                .tabItem { Label("Home", systemImage: "house.fill") }
-            TaskView()
-                .tabItem { Label("Tugas", systemImage: "list.bullet.clipboard") }
-            ExpenseView()
-                .tabItem { Label("Keuangan", systemImage: "rupiahsign.circle") }
-        }
-        .tint(Theme.navy)
+        DashboardView()
     }
 }
 
@@ -54,16 +46,18 @@ struct DashboardView: View {
                     .background(Color.white.opacity(0.15))
                     .cornerRadius(10)
                     
-                    Button(action: {}) {
-                        Image(systemName: "bell")
-                            .font(.title2)
+                    Menu {
+                        Button("Tambah Tugas") {
+                            modelContext.insert(TaskItem(title: "Tugas Baru", taskType: "Kampus"))
+                            WidgetCenter.shared.reloadAllTimelines()
+                        }
+                        Button("Tambah Pengeluaran") {
+                            modelContext.insert(ExpenseItem(title: "Makan Siang", amount: 25000))
+                        }
+                    } label: {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.title)
                             .foregroundColor(.white)
-                            .overlay(
-                                Circle()
-                                    .fill(Color.red)
-                                    .frame(width: 8, height: 8)
-                                    .offset(x: 8, y: -8)
-                            )
                     }
                     .padding(.leading, 10)
                 }
@@ -269,61 +263,3 @@ struct RoundedCorner: Shape {
     }
 }
 
-struct TaskView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query private var tasks: [TaskItem]
-    var body: some View {
-        NavigationStack {
-            List {
-                ForEach(tasks) { task in
-                    VStack(alignment: .leading) {
-                        Text(task.title).font(.headline)
-                        Text(task.taskType).font(.caption).foregroundColor(.gray)
-                    }
-                }.onDelete(perform: deleteTasks)
-            }
-            .navigationTitle("Tugas (Tahap 1)")
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button("Tambah") {
-                        modelContext.insert(TaskItem(title: "Tugas Baru", taskType: "Kampus"))
-                        WidgetCenter.shared.reloadAllTimelines()
-                    }
-                }
-            }
-        }
-    }
-    private func deleteTasks(offsets: IndexSet) {
-        for index in offsets { modelContext.delete(tasks[index]) }
-        WidgetCenter.shared.reloadAllTimelines()
-    }
-}
-
-struct ExpenseView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query private var expenses: [ExpenseItem]
-    var body: some View {
-        NavigationStack {
-            List {
-                ForEach(expenses) { expense in
-                    HStack {
-                        Text(expense.title)
-                        Spacer()
-                        Text("Rp \(expense.amount, specifier: "%.0f")")
-                    }
-                }.onDelete(perform: deleteExpenses)
-            }
-            .navigationTitle("Pengeluaran")
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button("Tambah") {
-                        modelContext.insert(ExpenseItem(title: "Makan Siang", amount: 25000))
-                    }
-                }
-            }
-        }
-    }
-    private func deleteExpenses(offsets: IndexSet) {
-        for index in offsets { modelContext.delete(expenses[index]) }
-    }
-}
