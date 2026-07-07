@@ -4,13 +4,24 @@ import WidgetKit
 
 // MARK: - Theme & Colors
 struct Theme {
-    static let navy = Color(red: 44/255, green: 54/255, blue: 63/255)
-    static let background = Color(red: 244/255, green: 241/255, blue: 234/255)
-    static let greenAccent = Color(red: 107/255, green: 142/255, blue: 124/255)
-    static let orangeAccent = Color(red: 238/255, green: 220/255, blue: 198/255)
-    static let orangeText = Color(red: 184/255, green: 123/255, blue: 94/255)
-    static let lightBlueAccent = Color(red: 217/255, green: 228/255, blue: 232/255)
-    static let lightBlueText = Color(red: 92/255, green: 116/255, blue: 126/255)
+    static let navy = Color(red: 18/255, green: 18/255, blue: 20/255)
+    static let background = Color(red: 10/255, green: 10/255, blue: 12/255)
+    static let cardBackground = Color(red: 28/255, green: 28/255, blue: 30/255)
+    static let textPrimary = Color.white
+    static let textSecondary = Color.gray
+    static let greenAccent = Color(red: 48/255, green: 209/255, blue: 88/255)
+    static let orangeAccent = Color(red: 255/255, green: 159/255, blue: 10/255).opacity(0.2)
+    static let orangeText = Color(red: 255/255, green: 159/255, blue: 10/255)
+    static let lightBlueAccent = Color(red: 10/255, green: 132/255, blue: 255/255).opacity(0.2)
+    static let lightBlueText = Color(red: 10/255, green: 132/255, blue: 255/255)
+}
+
+func formatRupiah(_ amount: Double) -> String {
+    let formatter = NumberFormatter()
+    formatter.numberStyle = .decimal
+    formatter.groupingSeparator = "."
+    formatter.decimalSeparator = ","
+    return "Rp " + (formatter.string(from: NSNumber(value: amount)) ?? "0")
 }
 
 struct ContentView: View {
@@ -92,19 +103,11 @@ struct DashboardView: View {
                                     .padding(.top, 5)
                                 
                                 HStack {
-                                    Text("Rp \(totalExpense, specifier: "%.0f")")
+                                    Text(formatRupiah(totalExpense))
                                         .font(.title)
                                         .fontWeight(.bold)
-                                        .foregroundColor(.black)
+                                        .foregroundColor(Theme.textPrimary)
                                     Spacer()
-                                    Text("+ 0%")
-                                        .font(.caption)
-                                        .fontWeight(.bold)
-                                        .padding(.horizontal, 8)
-                                        .padding(.vertical, 4)
-                                        .background(Theme.greenAccent)
-                                        .foregroundColor(.white)
-                                        .clipShape(Capsule())
                                 }
                             }
                         }
@@ -127,7 +130,7 @@ struct DashboardView: View {
                                     Text("Tugas\nSelesai")
                                         .font(.subheadline)
                                         .fontWeight(.semibold)
-                                        .foregroundColor(.black)
+                                        .foregroundColor(Theme.textPrimary)
                                         .fixedSize(horizontal: false, vertical: true)
                                     
                                     Text("\(completedTasks) dari \(totalTasksCount)")
@@ -148,7 +151,7 @@ struct DashboardView: View {
                                     Text("Tugas\nPending")
                                         .font(.subheadline)
                                         .fontWeight(.semibold)
-                                        .foregroundColor(.black)
+                                        .foregroundColor(Theme.textPrimary)
                                         .fixedSize(horizontal: false, vertical: true)
                                     
                                     Text("\(pendingTasks) tugas")
@@ -166,21 +169,22 @@ struct DashboardView: View {
                                 Text("Aktivitas Terbaru")
                                     .font(.headline)
                                     .fontWeight(.bold)
+                                    .foregroundColor(Theme.textPrimary)
                                 Spacer()
                                 Text("Lihat Semua")
                                     .font(.subheadline)
-                                    .foregroundColor(Theme.navy)
+                                    .foregroundColor(Theme.lightBlueText)
                             }
                             
                             DashboardCard {
                                 VStack(spacing: 0) {
                                     if expenses.isEmpty && tasks.isEmpty {
                                         Text("Belum ada aktivitas")
-                                            .foregroundColor(.gray)
+                                            .foregroundColor(Theme.textSecondary)
                                             .padding()
                                     } else {
                                         ForEach(Array(expenses.prefix(2).enumerated()), id: \.element.id) { index, expense in
-                                            ActivityRow(icon: "creditcard.fill", iconColor: Theme.greenAccent, iconBg: Theme.greenAccent.opacity(0.2), title: expense.title, subtitle: expense.date.formatted(date: .abbreviated, time: .omitted), value: String(format: "Rp %.0f", expense.amount), valueColor: Theme.greenAccent)
+                                            ActivityRow(icon: "creditcard.fill", iconColor: Theme.greenAccent, iconBg: Theme.greenAccent.opacity(0.2), title: expense.title, subtitle: expense.date.formatted(date: .abbreviated, time: .omitted), value: formatRupiah(expense.amount), valueColor: Theme.greenAccent)
                                                 .onSwipeDelete { modelContext.delete(expense) }
                                             Divider().padding(.vertical, 10)
                                         }
@@ -226,9 +230,10 @@ struct ActivityRow: View {
                 Text(title)
                     .font(.subheadline)
                     .fontWeight(.bold)
+                    .foregroundColor(Theme.textPrimary)
                 Text(subtitle)
                     .font(.caption)
-                    .foregroundColor(.gray)
+                    .foregroundColor(Theme.textSecondary)
             }
             Spacer()
             Text(value)
@@ -249,9 +254,9 @@ struct DashboardCard<Content: View>: View {
         content
             .padding(20)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.white)
+            .background(Theme.cardBackground)
             .cornerRadius(20)
-            .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 5)
+            .shadow(color: Color.black.opacity(0.2), radius: 10, x: 0, y: 5)
     }
 }
 
@@ -289,7 +294,7 @@ struct SwipeToDeleteModifier: ViewModifier {
             }
             
             content
-                .background(Color.white)
+                .background(Theme.cardBackground)
                 .offset(x: offset)
                 .gesture(
                     DragGesture()
