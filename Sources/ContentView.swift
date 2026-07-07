@@ -4,13 +4,13 @@ import WidgetKit
 
 // MARK: - Theme & Colors
 struct Theme {
-    static let navy = Color(red: 10/255, green: 38/255, blue: 71/255)
-    static let background = Color(red: 242/255, green: 244/255, blue: 247/255)
-    static let greenAccent = Color(red: 43/255, green: 155/255, blue: 133/255)
-    static let orangeAccent = Color(red: 253/255, green: 228/255, blue: 209/255)
-    static let orangeText = Color(red: 220/255, green: 120/255, blue: 80/255)
-    static let lightBlueAccent = Color(red: 205/255, green: 225/255, blue: 244/255)
-    static let lightBlueText = Color(red: 80/255, green: 130/255, blue: 180/255)
+    static let navy = Color(red: 44/255, green: 54/255, blue: 63/255)
+    static let background = Color(red: 244/255, green: 241/255, blue: 234/255)
+    static let greenAccent = Color(red: 107/255, green: 142/255, blue: 124/255)
+    static let orangeAccent = Color(red: 238/255, green: 220/255, blue: 198/255)
+    static let orangeText = Color(red: 184/255, green: 123/255, blue: 94/255)
+    static let lightBlueAccent = Color(red: 217/255, green: 228/255, blue: 232/255)
+    static let lightBlueText = Color(red: 92/255, green: 116/255, blue: 126/255)
 }
 
 struct ContentView: View {
@@ -181,11 +181,13 @@ struct DashboardView: View {
                                     } else {
                                         ForEach(Array(expenses.prefix(2).enumerated()), id: \.element.id) { index, expense in
                                             ActivityRow(icon: "creditcard.fill", iconColor: Theme.greenAccent, iconBg: Theme.greenAccent.opacity(0.2), title: expense.title, subtitle: expense.date.formatted(date: .abbreviated, time: .omitted), value: String(format: "Rp %.0f", expense.amount), valueColor: Theme.greenAccent)
+                                                .onSwipeDelete { modelContext.delete(expense) }
                                             Divider().padding(.vertical, 10)
                                         }
                                         
                                         ForEach(Array(tasks.prefix(2).enumerated()), id: \.element.id) { index, task in
                                             ActivityRow(icon: "doc.text.fill", iconColor: Theme.orangeText, iconBg: Theme.orangeAccent, title: task.title, subtitle: task.dueDate.formatted(date: .abbreviated, time: .omitted), value: task.isCompleted ? "Selesai" : "Pending", valueColor: task.isCompleted ? Theme.greenAccent : Theme.orangeText)
+                                                .onSwipeDelete { modelContext.delete(task) }
                                             if index != min(tasks.count, 2) - 1 {
                                                 Divider().padding(.vertical, 10)
                                             }
@@ -263,3 +265,55 @@ struct RoundedCorner: Shape {
     }
 }
 
+struct SwipeToDeleteModifier: ViewModifier {
+    var action: () -> Void
+    @State private var offset: CGFloat = 0
+    
+    func body(content: Content) -> some View {
+        ZStack(alignment: .trailing) {
+            if offset < 0 {
+                Button(action: {
+                    withAnimation {
+                        action()
+                        offset = 0
+                    }
+                }) {
+                    Image(systemName: "trash")
+                        .font(.title2)
+                        .foregroundColor(.white)
+                        .frame(width: 70, height: 50)
+                        .background(Color.red)
+                        .cornerRadius(12)
+                }
+                .padding(.trailing, 0)
+            }
+            
+            content
+                .background(Color.white)
+                .offset(x: offset)
+                .gesture(
+                    DragGesture()
+                        .onChanged { value in
+                            if value.translation.width < 0 {
+                                offset = value.translation.width
+                            }
+                        }
+                        .onEnded { value in
+                            withAnimation {
+                                if value.translation.width < -40 {
+                                    offset = -80
+                                } else {
+                                    offset = 0
+                                }
+                            }
+                        }
+                )
+        }
+    }
+}
+
+extension View {
+    func onSwipeDelete(perform action: @escaping () -> Void) -> some View {
+        self.modifier(SwipeToDeleteModifier(action: action))
+    }
+}
