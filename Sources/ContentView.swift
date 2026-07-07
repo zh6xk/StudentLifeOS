@@ -186,7 +186,7 @@ struct DashboardView: View {
                                             .padding()
                                     } else {
                                         ForEach(Array(expenses.prefix(2).enumerated()), id: \.element.id) { index, expense in
-                                            ActivityRow(icon: "creditcard.fill", iconColor: Theme.greenAccent, iconBg: Theme.greenAccent.opacity(0.2), title: expense.title, subtitle: expense.date.formatted(date: .abbreviated, time: .omitted), value: "Rp \(expense.amount, specifier: "%.0f")", valueColor: Theme.greenAccent)
+                                            ActivityRow(icon: "creditcard.fill", iconColor: Theme.greenAccent, iconBg: Theme.greenAccent.opacity(0.2), title: expense.title, subtitle: expense.date.formatted(date: .abbreviated, time: .omitted), value: String(format: "Rp %.0f", expense.amount), valueColor: Theme.greenAccent)
                                             Divider().padding(.vertical, 10)
                                         }
                                         
